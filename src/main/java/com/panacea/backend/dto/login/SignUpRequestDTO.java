@@ -13,26 +13,37 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class SignUpRequestDTO {
 
-    @NotBlank
+    @NotBlank(message = "Full name is required.")
     private String fullName;
 
-    @Email
-    @NotBlank
+    @NotBlank(message = "Email is required.")
+    @Email(message = "Please enter a valid email address.")
     private String email;
 
-    @NotBlank
-    @Pattern(regexp = "^[6-9]\\d{9}$")
+    @NotBlank(message = "Phone number is required.")
+    @Pattern(
+            regexp = "^[6-9][0-9]{9}$",
+            message = "Phone number must be a valid 10-digit mobile number."
+    )
     private String phoneNumber;
 
-    @NotBlank
+    @NotBlank(message = "College name is required.")
     private String collegeName;
 
-    @NotBlank
+    @NotBlank(message = "City is required.")
     private String city;
 
-    @NotBlank
+    @NotBlank(message = "State is required.")
     private String state;
 
-    @Size(min = 8, message = "Password must be at least 8 characters")
+    @NotBlank(message = "Password is required.")
+    @Size(
+            min = 8,
+            message = "Password must be at least 8 characters long."
+    )
+    @Pattern(
+            regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$",
+            message = "Password must contain at least one letter and one number."
+    )
     private String password;
 }

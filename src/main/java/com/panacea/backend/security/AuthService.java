@@ -1,6 +1,5 @@
 package com.panacea.backend.security;
 
-
 import com.panacea.backend.Entity.UserEntity;
 import com.panacea.backend.Entity.UserPrincipal;
 import com.panacea.backend.Enum.Role;
@@ -19,6 +18,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import static com.panacea.backend.utils.AppUtils.giveMeCurrentUser;
@@ -26,10 +26,12 @@ import static com.panacea.backend.utils.AppUtils.giveMeCurrentUser;
 @Service
 @AllArgsConstructor
 public class AuthService {
+
     @Autowired
     private UserRepository userRepository;
 
     private final ModelMapper modelMapper;
+
     private PasswordEncoder passwordEncoder;
 
     private final AuthenticationManager authenticationManager;
@@ -37,42 +39,115 @@ public class AuthService {
     @Autowired
     private JwtService jwtService;
 
-    public UserDTO signup(SignUpRequestDTO signUpRequestDTO) {
-        UserEntity user= userRepository.findByEmail(signUpRequestDTO.getEmail()).orElse(null);
-        if(user!=null){
-            throw new RuntimeException("User with same email Id exist");
+    public UserDTO signup(
+            SignUpRequestDTO signUpRequestDTO
+    ) {
+
+        UserEntity user =
+                userRepository
+                        .findByEmail(
+                                signUpRequestDTO.getEmail()
+                        )
+                        .orElse(null);
+
+        if (user != null) {
+            throw new RuntimeException(
+                    "User with same email Id exist"
+            );
         }
-        UserEntity newUser=modelMapper.map(signUpRequestDTO,UserEntity.class);
-        newUser.setRoles(Set.of(Role.ROLE_GUEST));
-        newUser.setPassword(passwordEncoder.encode(signUpRequestDTO.getPassword()));
+
+        UserEntity newUser =
+                modelMapper.map(
+                        signUpRequestDTO,
+                        UserEntity.class
+                );
+
+        newUser.setRoles(
+                Set.of(Role.ROLE_GUEST)
+        );
+
+        newUser.setPassword(
+                passwordEncoder.encode(
+                        signUpRequestDTO.getPassword()
+                )
+        );
+
         userRepository.save(newUser);
 
-        return modelMapper.map(newUser,UserDTO.class);
+        return modelMapper.map(
+                newUser,
+                UserDTO.class
+        );
     }
 
-    public LoginResultDTO login(LoginRequestDTO loginRequestDTO){
-        Authentication authentication=authenticationManager.authenticate(
-               new UsernamePasswordAuthenticationToken( loginRequestDTO.getEmail(),
-                       loginRequestDTO.getPassword())
-        );
-        UserPrincipal userPrincipal= (UserPrincipal) authentication.getPrincipal();
-        UserDTO user=modelMapper.map(userPrincipal.getUser(),UserDTO.class);
+    public LoginResultDTO login(
+            LoginRequestDTO loginRequestDTO
+    ) {
+
+        Authentication authentication =
+                authenticationManager.authenticate(
+                        new UsernamePasswordAuthenticationToken(
+                                loginRequestDTO.getEmail(),
+                                loginRequestDTO.getPassword()
+                        )
+                );
+
+        UserPrincipal userPrincipal =
+                (UserPrincipal)
+                        authentication.getPrincipal();
+
+        UserDTO user =
+                modelMapper.map(
+                        userPrincipal.getUser(),
+                        UserDTO.class
+                );
+
         return new LoginResultDTO(
-                jwtService.generateAccessToken(user.getEmail(),user.getRoles()),
-                jwtService.generateRefreshToken(user.getEmail()),
+                jwtService.generateAccessToken(
+                        user.getEmail(),
+                        user.getRoles()
+                ),
+                jwtService.generateRefreshToken(
+                        user.getEmail()
+                ),
                 user
         );
     }
 
-    public String refreshToken(String refreshToken) {
-        String email=jwtService.getUserEmailFromToken(refreshToken);
-        UserEntity user = userRepository.findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("User not found with id: "+email));
-        return jwtService.generateAccessToken(user.getEmail(),user.getRoles());
+    public String refreshToken(
+            String refreshToken
+    ) {
+
+        String email =
+                jwtService.getUserEmailFromToken(
+                        refreshToken
+                );
+
+        UserEntity user =
+                userRepository
+                        .findByEmail(email)
+                        .orElseThrow(
+                                () ->
+                                        new ResourceNotFoundException(
+                                                "User not found with id: "
+                                                        + email
+                                        )
+                        );
+
+        return jwtService.generateAccessToken(
+                user.getEmail(),
+                user.getRoles()
+        );
     }
 
     public UserDTO getCurrentUser() {
-        UserEntity user = giveMeCurrentUser();
 
-        return modelMapper.map(user,UserDTO.class);
+        UserEntity user =
+                giveMeCurrentUser();
+
+        return modelMapper.map(
+                user,
+                UserDTO.class
+        );
     }
 }
