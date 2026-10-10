@@ -7,29 +7,31 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record AdminBrCardResponse(
-
         Long paymentId,
-
         Long brCardId,
-
         Long userId,
 
-        String cardId,
+        String fullName,
+        String email,
+        String phoneNumber,
+        String collegeName,
+        String city,
+        String state,
 
+        String cardId,
         BrCardPassType passType,
 
         BigDecimal expectedAmount,
+        BigDecimal paymentAmount,
+
+        boolean upgrade,
 
         String transactionId,
-
         String paymentScreenshotUrl,
 
         BrCardPaymentStatus paymentStatus,
-
         String rejectionReason,
 
         LocalDateTime submittedAt,
-
         LocalDateTime verifiedAt
-) {
-}
+) {}

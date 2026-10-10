@@ -7,6 +7,7 @@ public enum BrCardPassType {
     WITHOUT_ACCOMMODATION(BigDecimal.valueOf(1000)),
     WITH_ACCOMMODATION(BigDecimal.valueOf(1500));
 
+
     private final BigDecimal amount;
 
     BrCardPassType(BigDecimal amount) {

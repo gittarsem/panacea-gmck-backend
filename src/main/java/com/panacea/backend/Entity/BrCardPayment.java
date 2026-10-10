@@ -2,12 +2,20 @@ package com.panacea.backend.Entity;
 
 
 import com.panacea.backend.Enum.BrCardPaymentStatus;
+import com.panacea.backend.Enum.BrCardPaymentType;
 import jakarta.persistence.*;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
+import org.modelmapper.internal.bytebuddy.implementation.bind.annotation.Super;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
+@Data
+@NoArgsConstructor
 @Table(
         name = "br_card_payments",
         uniqueConstraints = {
@@ -27,6 +35,7 @@ import java.time.LocalDateTime;
                 )
         }
 )
+@SuperBuilder
 public class BrCardPayment {
 
     @Id
@@ -78,6 +87,9 @@ public class BrCardPayment {
     )
     private BrCardPaymentStatus status;
 
+    @Enumerated(EnumType.STRING)
+    private BrCardPaymentType paymentType;
+
     @Column(
             name = "rejection_reason",
             length = 500
@@ -107,85 +119,4 @@ public class BrCardPayment {
         }
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public BrCard getBrCard() {
-        return brCard;
-    }
-
-    public void setBrCard(BrCard brCard) {
-        this.brCard = brCard;
-    }
-
-    public String getTransactionId() {
-        return transactionId;
-    }
-
-    public void setTransactionId(String transactionId) {
-        this.transactionId = transactionId;
-    }
-
-    public BigDecimal getAmount() {
-        return amount;
-    }
-
-    public void setAmount(BigDecimal amount) {
-        this.amount = amount;
-    }
-
-    public String getPaymentScreenshotUrl() {
-        return paymentScreenshotUrl;
-    }
-
-    public void setPaymentScreenshotUrl(
-            String paymentScreenshotUrl
-    ) {
-        this.paymentScreenshotUrl =
-                paymentScreenshotUrl;
-    }
-
-    public BrCardPaymentStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(
-            BrCardPaymentStatus status
-    ) {
-        this.status = status;
-    }
-
-    public String getRejectionReason() {
-        return rejectionReason;
-    }
-
-    public void setRejectionReason(
-            String rejectionReason
-    ) {
-        this.rejectionReason =
-                rejectionReason;
-    }
-
-    public Long getVerifiedBy() {
-        return verifiedBy;
-    }
-
-    public void setVerifiedBy(Long verifiedBy) {
-        this.verifiedBy = verifiedBy;
-    }
-
-    public LocalDateTime getSubmittedAt() {
-        return submittedAt;
-    }
-
-    public LocalDateTime getVerifiedAt() {
-        return verifiedAt;
-    }
-
-    public void setVerifiedAt(
-            LocalDateTime verifiedAt
-    ) {
-        this.verifiedAt = verifiedAt;
-    }
 }

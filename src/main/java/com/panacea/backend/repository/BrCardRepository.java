@@ -26,4 +26,10 @@ public interface BrCardRepository
     boolean existsByUserId(Long userId);
 
     long countByStatus(BrCardStatus status);
+
+    List<BrCard> findAllByStatusOrderByCreatedAtDesc(
+            BrCardStatus status
+    );
+
+
 }
