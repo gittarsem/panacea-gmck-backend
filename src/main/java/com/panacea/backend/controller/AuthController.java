@@ -125,4 +125,11 @@ public class AuthController {
 
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/me")
+    public ResponseEntity<UserDTO> me() {
+        return ResponseEntity.ok(
+                authService.getCurrentUser()
+        );
+    }
 }
