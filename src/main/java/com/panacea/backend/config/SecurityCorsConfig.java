@@ -17,6 +17,7 @@ public class SecurityCorsConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowedOrigins(List.of(
+                "https://panacea-gmck-frontend-kappa.vercel.app",
                 "http://localhost:5173"
                 )
         );
