@@ -88,7 +88,7 @@ public class JwtFilter extends OncePerRequestFilter {
                         request,
                         response,
                         new InsufficientAuthenticationException(
-                                "JWT has expired",
+                                "OOPS! Relogin",
                                 ex
                         )
                 );
