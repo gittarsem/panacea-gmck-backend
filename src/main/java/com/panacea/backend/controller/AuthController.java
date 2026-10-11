@@ -9,8 +9,10 @@ import com.panacea.backend.dto.login.SignUpRequestDTO;
 import com.panacea.backend.security.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
+
+import java.time.Duration;import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -55,18 +57,21 @@ public class AuthController {
         LoginResultDTO result =
                 authService.login(loginRequestDTO);
 
-        Cookie cookie =
-                new Cookie(
+        ResponseCookie cookie = ResponseCookie.from(
                         "refreshToken",
                         result.getRefreshToken()
-                );
+                )
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("None")
+                .path("/")
+                .maxAge(Duration.ofDays(7))
+                .build();
 
-        cookie.setHttpOnly(true);
-        cookie.setSecure(false);
-        cookie.setPath("/");
-        cookie.setMaxAge(7 * 24 * 60 * 60);
-
-        response.addCookie(cookie);
+        response.addHeader(
+                HttpHeaders.SET_COOKIE,
+                cookie.toString()
+        );
 
         return ResponseEntity.ok(
                 new LoginResponseDTO(
@@ -102,26 +107,22 @@ public class AuthController {
             HttpServletResponse response
     ) {
 
-        Cookie cookie =
-                new Cookie("refreshToken", "");
+        ResponseCookie cookie = ResponseCookie.from(
+                        "refreshToken",
+                        ""
+                )
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("None")
+                .path("/")
+                .maxAge(Duration.ZERO)
+                .build();
 
-        cookie.setHttpOnly(true);
-        cookie.setSecure(false);
-        cookie.setMaxAge(0);
-        cookie.setPath("/");
-
-        response.addCookie(cookie);
+        response.addHeader(
+                HttpHeaders.SET_COOKIE,
+                cookie.toString()
+        );
 
         return ResponseEntity.ok().build();
-    }
-
-    @GetMapping("/me")
-    @Operation(
-            summary = "Get current authenticated user"
-    )
-    public ResponseEntity<UserDTO> me() {
-        return ResponseEntity.ok(
-                authService.getCurrentUser()
-        );
     }
 }
