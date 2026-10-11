@@ -136,21 +136,102 @@ public class PaymentScreenshotService {
             MultipartFile file
     ) throws IOException {
 
-        BufferedImage original =
-                ImageIO.read(file.getInputStream());
+        BufferedImage original;
+
+        /*
+         * Read the image using ImageReader with subsampling.
+         *
+         * This is important for Render because ImageIO.read()
+         * can consume a huge amount of heap when the uploaded
+         * image has very high resolution.
+         */
+        try (var inputStream = file.getInputStream();
+             var imageInput = ImageIO.createImageInputStream(inputStream)) {
+
+            if (imageInput == null) {
+                throw new IllegalArgumentException(
+                        "Unable to read uploaded image"
+                );
+            }
+
+            Iterator<javax.imageio.ImageReader> readers =
+                    ImageIO.getImageReaders(imageInput);
+
+            if (!readers.hasNext()) {
+                throw new IllegalArgumentException(
+                        "Unsupported image format"
+                );
+            }
+
+            javax.imageio.ImageReader reader =
+                    readers.next();
+
+            try {
+                reader.setInput(imageInput, true, true);
+
+                int originalWidth =
+                        reader.getWidth(0);
+
+                int originalHeight =
+                        reader.getHeight(0);
+
+                /*
+                 * Calculate how much we should downsample
+                 * while reading the image.
+                 */
+                int largestDimension =
+                        Math.max(
+                                originalWidth,
+                                originalHeight
+                        );
+
+                int sample =
+                        Math.max(
+                                1,
+                                (int) Math.ceil(
+                                        (double) largestDimension
+                                                / MAX_IMAGE_DIMENSION
+                                )
+                        );
+
+                javax.imageio.ImageReadParam readParam =
+                        reader.getDefaultReadParam();
+
+                if (sample > 1) {
+                    readParam.setSourceSubsampling(
+                            sample,
+                            sample,
+                            0,
+                            0
+                    );
+                }
+
+                original =
+                        reader.read(
+                                0,
+                                readParam
+                        );
+
+            } finally {
+                reader.dispose();
+            }
+        }
 
         if (original == null) {
-
             throw new IllegalArgumentException(
                     "Unable to read the uploaded image"
             );
         }
 
+        /*
+         * Make absolutely sure the resulting image
+         * does not exceed our maximum dimensions.
+         */
         BufferedImage resized =
                 resizeImage(original);
 
         /*
-         * Start with high quality.
+         * Start with high JPEG quality.
          */
         float quality = 0.90f;
 
@@ -161,8 +242,8 @@ public class PaymentScreenshotService {
                 );
 
         /*
-         * Reduce JPEG quality gradually until
-         * the image is safely below our target.
+         * Reduce JPEG quality until the image
+         * is safely below 8 MB.
          */
         while (
                 compressed.length > TARGET_FILE_SIZE
@@ -179,11 +260,14 @@ public class PaymentScreenshotService {
         }
 
         /*
-         * If the image is still too large,
-         * progressively resize it further.
+         * If quality reduction alone is not enough,
+         * progressively reduce dimensions.
          */
-        int currentWidth = resized.getWidth();
-        int currentHeight = resized.getHeight();
+        int currentWidth =
+                resized.getWidth();
+
+        int currentHeight =
+                resized.getHeight();
 
         while (
                 compressed.length > TARGET_FILE_SIZE
@@ -222,7 +306,7 @@ public class PaymentScreenshotService {
         }
 
         /*
-         * Safety check.
+         * Final safety check.
          */
         if (compressed.length > TARGET_FILE_SIZE) {
 
