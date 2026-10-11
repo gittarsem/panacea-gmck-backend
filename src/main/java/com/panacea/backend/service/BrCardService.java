@@ -80,11 +80,6 @@ public class BrCardService {
          *
          * submitAccommodationUpgrade()
          */
-        if (passType == BrCardPassType.WITH_ACCOMMODATION) {
-            throw new IllegalStateException(
-                    "Accommodation upgrade must be submitted through the upgrade option."
-            );
-        }
 
         String normalizedTransactionId =
                 normalizeTransactionId(transactionId);
