@@ -48,7 +48,7 @@ public class BrCardController {
             @RequestParam("transactionId")
             String transactionId,
 
-            @RequestPart("paymentScreenshot")
+            @RequestPart(value = "paymentScreenshot",required = false)
             MultipartFile paymentScreenshot,
 
             Authentication authentication

@@ -184,9 +184,12 @@ public class BrCardService {
         /*
          * Upload payment screenshot.
          */
-        String screenshotUrl =
-                screenshotService.upload(screenshot);
+        String screenshotUrl = null;
 
+        if (screenshot != null && !screenshot.isEmpty()) {
+            screenshotUrl =
+                    screenshotService.upload(screenshot);
+        }
         /*
          * IMPORTANT:
          *
