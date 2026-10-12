@@ -75,7 +75,7 @@ public class BrCardPayment {
 
     @Column(
             name = "payment_screenshot_url",
-            nullable = false,
+            nullable = true,
             length = 500
     )
     private String paymentScreenshotUrl;

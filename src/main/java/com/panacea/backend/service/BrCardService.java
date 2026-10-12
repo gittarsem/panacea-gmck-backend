@@ -15,7 +15,6 @@ import com.panacea.backend.repository.BrCardRepository;
 import com.panacea.backend.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -45,9 +44,11 @@ public class BrCardService {
 
     private final BrCardPaymentRepository paymentRepository;
 
-    private final PaymentScreenshotService screenshotService;
+    private final GoogleDriveService googleDriveService;
 
     private final UserRepository userRepository;
+
+
     // =========================================================
     // NEW BR CARD PAYMENT
     // =========================================================
@@ -62,7 +63,7 @@ public class BrCardService {
 
         if (userId == null) {
             throw new IllegalArgumentException(
-                    "Authenticated user is required"
+                    "Please Relogin"
             );
         }
 
@@ -72,19 +73,11 @@ public class BrCardService {
             );
         }
 
-        /*
-         * New BR Card registration should NEVER be used
-         * for accommodation upgrades.
-         *
-         * Upgrades have their own endpoint:
-         *
-         * submitAccommodationUpgrade()
-         */
-
         String normalizedTransactionId =
                 normalizeTransactionId(transactionId);
 
         validateTransactionId(normalizedTransactionId);
+
 
         /*
          * Check whether this user already has a BR Card.
@@ -93,6 +86,7 @@ public class BrCardService {
                 brCardRepository
                         .findByUserId(userId)
                         .orElse(null);
+
 
         /*
          * Existing active card cannot submit another
@@ -106,9 +100,9 @@ public class BrCardService {
             );
         }
 
+
         /*
-         * If a rejected card exists, allow the user to
-         * submit the payment again.
+         * If no card exists, create a new card.
          */
         if (brCard == null) {
 
@@ -131,9 +125,10 @@ public class BrCardService {
                 );
             }
 
+
             /*
              * If previous payment was rejected,
-             * allow resubmission.
+             * allow resubmission with a fresh pass type.
              */
             if (brCard.getStatus() ==
                     BrCardStatus.REJECTED) {
@@ -146,6 +141,7 @@ public class BrCardService {
             }
         }
 
+
         /*
          * Transaction ID must be unique.
          */
@@ -157,6 +153,7 @@ public class BrCardService {
                     "This transaction ID has already been submitted."
             );
         }
+
 
         /*
          * Prevent another pending normal payment.
@@ -176,24 +173,37 @@ public class BrCardService {
             );
         }
 
+
         /*
-         * Upload payment screenshot.
+         * Payment screenshot is OPTIONAL.
+         *
+         * If provided, upload directly to Google Drive.
+         *
+         * IMPORTANT:
+         * We are NOT decoding/compressing the image here.
+         * The file is streamed directly to Google Drive,
+         * which avoids the ImageIO heap/OOM issue on Render.
          */
         String screenshotUrl = null;
 
-        if (screenshot != null && !screenshot.isEmpty()) {
+        if (screenshot != null &&
+                !screenshot.isEmpty()) {
+
             screenshotUrl =
-                    screenshotService.upload(screenshot);
+                    googleDriveService.uploadFile(
+                            screenshot
+                    );
         }
+
+
         /*
-         * IMPORTANT:
+         * Create payment.
          *
-         * Use builder instead of:
+         * paymentScreenshotUrl is intentionally kept as
+         * the existing field name so the frontend does not
+         * need any changes.
          *
-         * new BrCardPayment()
-         *
-         * because your BrCardPayment constructor is
-         * package-private.
+         * Its value is now the Google Drive FILE ID.
          */
         BrCardPayment payment =
                 BrCardPayment.builder()
@@ -211,6 +221,7 @@ public class BrCardService {
                                 BrCardPaymentStatus.PENDING
                         )
                         .build();
+
 
         /*
          * Card is waiting for admin verification.
@@ -243,7 +254,7 @@ public class BrCardService {
 
         if (user == null) {
             throw new IllegalStateException(
-                    "Authenticated user is required."
+                    "Please Relogin"
             );
         }
 
@@ -254,6 +265,7 @@ public class BrCardService {
                 normalizedTransactionId
         );
 
+
         BrCard brCard =
                 brCardRepository
                         .findByUserId(user.getId())
@@ -262,6 +274,7 @@ public class BrCardService {
                                         "BR Card not found."
                                 )
                         );
+
 
         /*
          * User must already have an active card.
@@ -274,6 +287,7 @@ public class BrCardService {
             );
         }
 
+
         /*
          * Already upgraded.
          */
@@ -284,6 +298,7 @@ public class BrCardService {
                     "Accommodation is already included in your BR Card."
             );
         }
+
 
         /*
          * Prevent duplicate pending upgrade.
@@ -303,6 +318,7 @@ public class BrCardService {
             );
         }
 
+
         /*
          * Transaction ID must be unique.
          */
@@ -315,13 +331,24 @@ public class BrCardService {
             );
         }
 
+
         /*
-         * Upload screenshot.
+         * Upgrade screenshot.
+         *
+         * Keep the existing field name and store the
+         * Google Drive file ID in it.
          */
-        String screenshotUrl =
-                screenshotService.upload(
-                        paymentScreenshot
-                );
+        String screenshotUrl = null;
+
+        if (paymentScreenshot != null &&
+                !paymentScreenshot.isEmpty()) {
+
+            screenshotUrl =
+                    googleDriveService.uploadFile(
+                            paymentScreenshot
+                    );
+        }
+
 
         /*
          * Create ONLY a ₹500 upgrade payment.
@@ -372,7 +399,7 @@ public class BrCardService {
 
         if (user == null) {
             throw new IllegalStateException(
-                    "Authenticated user is required."
+                    "Please Relogin"
             );
         }
 
@@ -399,6 +426,7 @@ public class BrCardService {
             return null;
         }
 
+
         /*
          * Get latest payment.
          *
@@ -412,6 +440,7 @@ public class BrCardService {
                         )
                         .orElse(null);
 
+
         /*
          * Check whether an accommodation upgrade
          * is currently pending.
@@ -423,6 +452,7 @@ public class BrCardService {
                                 BrCardPaymentType.ACCOMMODATION_UPGRADE,
                                 BrCardPaymentStatus.PENDING
                         );
+
 
         /*
          * Build response.
@@ -487,6 +517,7 @@ public class BrCardService {
                                 )
                         );
 
+
         /*
          * Only pending payments can be approved.
          */
@@ -500,6 +531,7 @@ public class BrCardService {
 
         BrCard card =
                 payment.getBrCard();
+
 
         /*
          * =====================================================
@@ -518,6 +550,7 @@ public class BrCardService {
                 payment.getPaymentType() ==
                         BrCardPaymentType.ACCOMMODATION_UPGRADE;
 
+
         if (isUpgrade) {
 
             /*
@@ -531,6 +564,7 @@ public class BrCardService {
                 );
             }
 
+
             /*
              * Safety check amount.
              */
@@ -543,10 +577,9 @@ public class BrCardService {
                 );
             }
 
+
             /*
              * Upgrade existing card.
-             *
-             * IMPORTANT:
              *
              * DO NOT create a new card ID.
              * DO NOT create a new QR token.
@@ -581,6 +614,7 @@ public class BrCardService {
                 );
             }
 
+
             /*
              * Generate card ID ONLY for the first
              * successful BR Card payment.
@@ -592,6 +626,7 @@ public class BrCardService {
                         generateUniqueCardId()
                 );
             }
+
 
             /*
              * Generate QR token ONLY for the first
@@ -609,6 +644,7 @@ public class BrCardService {
                     BrCardStatus.ACTIVE
             );
         }
+
 
         /*
          * Mark payment approved.
@@ -657,6 +693,7 @@ public class BrCardService {
                                 )
                         );
 
+
         if (payment.getStatus() !=
                 BrCardPaymentStatus.PENDING) {
 
@@ -664,6 +701,7 @@ public class BrCardService {
                     "Only pending payments can be rejected."
             );
         }
+
 
         if (rejectionReason == null ||
                 rejectionReason.isBlank()) {
@@ -673,6 +711,7 @@ public class BrCardService {
             );
         }
 
+
         if (rejectionReason.length() > 500) {
 
             throw new IllegalArgumentException(
@@ -680,12 +719,14 @@ public class BrCardService {
             );
         }
 
+
         BrCard card =
                 payment.getBrCard();
 
         boolean isUpgrade =
                 payment.getPaymentType() ==
                         BrCardPaymentType.ACCOMMODATION_UPGRADE;
+
 
         /*
          * Reject payment.
@@ -705,6 +746,7 @@ public class BrCardService {
         payment.setVerifiedAt(
                 LocalDateTime.now()
         );
+
 
         /*
          * IMPORTANT:
@@ -727,6 +769,7 @@ public class BrCardService {
                     BrCardStatus.REJECTED
             );
         }
+
 
         brCardRepository.save(card);
 
@@ -770,6 +813,7 @@ public class BrCardService {
             );
         }
 
+
         BrCard card =
                 brCardRepository
                         .findByQrToken(qrToken)
@@ -779,6 +823,7 @@ public class BrCardService {
                                 )
                         );
 
+
         if (card.getStatus() !=
                 BrCardStatus.ACTIVE) {
 
@@ -787,12 +832,14 @@ public class BrCardService {
             );
         }
 
+
         BrCardPayment latestPayment =
                 paymentRepository
                         .findFirstByBrCardIdOrderBySubmittedAtDesc(
                                 card.getId()
                         )
                         .orElse(null);
+
 
         return toBrCardResponse(
                 card,
@@ -862,6 +909,7 @@ public class BrCardService {
                     "Transaction ID is required."
             );
         }
+
 
         /*
          * Generic UTR / transaction validation.
@@ -973,6 +1021,7 @@ public class BrCardService {
                                 BrCardPaymentStatus.PENDING
                         );
 
+
         return BrCardResponse.builder()
                 .id(card.getId())
                 .cardId(card.getCardId())
@@ -1009,15 +1058,27 @@ public class BrCardService {
         BrCard card =
                 payment.getBrCard();
 
-        UserEntity user=userRepository.findById(card.getId()).orElse(null
-        );
+        /*
+         * FIX:
+         *
+         * card.getId() = BR Card ID
+         * card.getUserId() = User ID
+         *
+         * We need the latter here.
+         */
+        UserEntity user =
+                userRepository
+                        .findById(card.getUserId())
+                        .orElse(null);
+
 
         /*
-         * The payment type is now the source of truth.
+         * The payment type is the source of truth.
          */
         boolean isUpgrade =
                 payment.getPaymentType() ==
                         BrCardPaymentType.ACCOMMODATION_UPGRADE;
+
 
         return new AdminBrCardResponse(
                 payment.getId(),
@@ -1050,82 +1111,26 @@ public class BrCardService {
 
                 card.getCardId(),
                 card.getPassType(),
+
                 card.getAmount(),
                 payment.getAmount(),
+
                 isUpgrade,
+
                 payment.getTransactionId(),
+
+                /*
+                 * Keep the existing API field name.
+                 *
+                 * This now contains the Google Drive FILE ID,
+                 * not a Cloudinary URL.
+                 */
                 payment.getPaymentScreenshotUrl(),
+
                 payment.getStatus(),
                 payment.getRejectionReason(),
                 payment.getSubmittedAt(),
                 payment.getVerifiedAt()
         );
-    }
-
-    @Transactional
-    public BrCardPaymentResponse submitUpgradePayment(
-            Long userId,
-            String transactionId,
-            MultipartFile screenshot
-    ) {
-        if (userId == null) {
-            throw new IllegalArgumentException("Authenticated user is required");
-        }
-
-        String normalizedTransactionId = normalizeTransactionId(transactionId);
-        validateTransactionId(normalizedTransactionId);
-
-        BrCard brCard = brCardRepository.findByUserId(userId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("BR Card registration not found")
-                );
-
-        if (brCard.getStatus() != BrCardStatus.ACTIVE) {
-            throw new IllegalStateException(
-                    "Only an active BR Card can be upgraded"
-            );
-        }
-
-        if (brCard.getPassType() != BrCardPassType.WITHOUT_ACCOMMODATION) {
-            throw new IllegalStateException(
-                    "Your BR Card is already upgraded"
-            );
-        }
-
-        boolean pendingUpgrade =
-                paymentRepository.findFirstByBrCardIdOrderBySubmittedAtDesc(brCard.getId())
-                        .map(payment ->
-                                payment.getStatus() == BrCardPaymentStatus.PENDING
-                                        && payment.getAmount().compareTo(new BigDecimal("500")) == 0
-                        )
-                        .orElse(false);
-
-        if (pendingUpgrade) {
-            throw new IllegalStateException(
-                    "Your accommodation upgrade request is already pending verification."
-            );
-        }
-
-        if (paymentRepository.existsByTransactionId(normalizedTransactionId)) {
-            throw new IllegalArgumentException(
-                    "This transaction ID has already been submitted"
-            );
-        }
-
-        String screenshotUrl =
-                screenshotService.upload(screenshot);
-
-        BrCardPayment payment = new BrCardPayment();
-
-        payment.setBrCard(brCard);
-        payment.setTransactionId(normalizedTransactionId);
-        payment.setAmount(new BigDecimal("500"));
-        payment.setPaymentScreenshotUrl(screenshotUrl);
-        payment.setStatus(BrCardPaymentStatus.PENDING);
-
-        BrCardPayment saved =
-                paymentRepository.save(payment);
-
-        return toPaymentResponse(saved);
     }
 }
