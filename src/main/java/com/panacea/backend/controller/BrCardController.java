@@ -158,6 +158,15 @@ public class BrCardController {
         );
     }
 
+    @GetMapping("/admin/active")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<AdminBrCardResponse>> getActiveBrCards() {
+
+        return ResponseEntity.ok(
+                brCardService.getActiveBrCards()
+        );
+    }
+
     // =========================================================
     // AUTHENTICATED USER RESOLUTION
     // =========================================================
@@ -183,5 +192,25 @@ public class BrCardController {
         return userPrincipal
                 .getUser()
                 .getId();
+    }
+
+    @PostMapping(
+            value = "/me/upgrade",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<Void> submitAccommodationUpgrade(
+            @RequestParam("transactionId")
+            String transactionId,
+
+            @RequestParam("paymentScreenshot")
+            MultipartFile paymentScreenshot
+    ) {
+
+        brCardService.submitAccommodationUpgrade(
+                transactionId,
+                paymentScreenshot
+        );
+
+        return ResponseEntity.ok().build();
     }
 }
