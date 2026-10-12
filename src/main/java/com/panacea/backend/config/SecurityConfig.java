@@ -84,7 +84,8 @@ public class SecurityConfig {
 
                         // QR verification is an admin operation
                         .requestMatchers(
-                                "/api/br-cards/verify"
+                                "/api/br-cards/verify",
+                                "/api/br-cards/payment-screenshot/{fileId}"
                         ).hasRole("ADMIN")
 
                         // User BR Card endpoints

@@ -62,8 +62,8 @@ public class AuthController {
                         result.getRefreshToken()
                 )
                 .httpOnly(true)
-                .secure(true)
-                .sameSite("None")
+                .secure(false)
+                .sameSite("Lax")
                 .path("/")
                 .maxAge(Duration.ofDays(7))
                 .build();
@@ -87,9 +87,18 @@ public class AuthController {
             description = "Generates a new access token using a refresh token."
     )
     public ResponseEntity<TokenResponseDTO> refresh(
-            @CookieValue(name = "refreshToken")
+            @CookieValue(
+                    name = "refreshToken",
+                    required = false
+            )
             String refreshToken
     ) {
+
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .build();
+        }
 
         String accessToken =
                 authService.refreshToken(refreshToken);
@@ -112,8 +121,8 @@ public class AuthController {
                         ""
                 )
                 .httpOnly(true)
-                .secure(true)
-                .sameSite("None")
+                .secure(false)
+                .sameSite("Lax")
                 .path("/")
                 .maxAge(Duration.ZERO)
                 .build();
